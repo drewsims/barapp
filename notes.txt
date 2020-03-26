@@ -1,0 +1,5 @@
+wont load map possible limit
+
+still need to populate infowindow qith data. need to pull data before map is loaded or refresh map data.
+- getInfo
+G*r!23@ZWr0ig0

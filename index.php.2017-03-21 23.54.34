@@ -1,0 +1,436 @@
+<?php # index.php
+ini_set('display_errors',1);
+ini_set('display_startup_errors',1);
+error_reporting(-1);
+session_start();
+//check session first
+include ('header.php');
+
+/* include ('ChromePhp.php'); 
+ChromePhp::log('This is just a log message');
+ChromePhp::warn("This is a warning message " ) ;
+ChromePhp::error("This is an error message" ) ;
+ChromePhp::log($_SERVER);
+ 
+// using labels
+foreach ($_SERVER as $key => $value) {
+    ChromePhp::log($key, $value);
+}
+ 
+require_once(__DIR__ . '/PhpConsole/__autoload.php');
+$isActiveClient = PhpConsole\Connector::getInstance()->isActiveClient();*/
+
+if (isset($_SESSION['user_session'])){
+
+//require_once ('mysql_connect.php');
+//get users
+//$query = "SELECT * FROM users";
+//$result = @mysql_query ($query);
+//$users = array();
+//$i=0;
+//while ($row = mysql_fetch_array($result, MYSQL_ASSOC)) {
+//$users[$i] = $row;
+//$i++;
+
+//print_r($users);
+//print_r($_SESSION['email']);
+//echo json_encode($users);
+}else
+{
+//header("Location: login-form.php");
+}
+?>
+
+<div id="map_canvas"></div>
+<div id="info"></div>
+<!--div class="drop"style="text-align:center">
+<label class="labels">Bars around you</label><br>
+<select id="place" onchange="gotoBar(this);"></select><br><br>
+ <button id="more">More results</button>
+</div>
+<div id="right-panel">
+      <h2>Results</h2>
+      <ul id="places"></ul>
+</div--> 
+<br><br><br><br>
+
+<div class="forms">
+<div id="form-address" title="Enter address/Zipcode">
+<form id="formAddress" style="center">
+<input type="textbox" id="address" size="30" maxlength="40"class="text ui-widget-content ui-corner-all"/>
+<input id="btnAddress" type="button" value="search" onClick="codeAddress()" style=" visibility: hidden;"/> 
+</form>
+</div>
+
+<button id="searchPlace" class="btn btn-default" style="background-color:#81BEF7; 
+color:black;font-weight: bold;">Search</button> 
+<!--button id="btRate" name="btRate" 
+class="btn btn-default"   onClick="ratingPass()">Rate</button-->
+</div>
+
+<div id="test"></div>
+<div id="test2"></div>
+
+<script>
+var map = null;
+var gmarkers = [];
+var places = [];
+var destMarkers = [];
+var service = null;
+var noAutoComplete = true;
+var initialService = null;
+var myPosition = null;
+var barLocation = null;
+var placeId = null;
+var option = null;
+var pList = null;
+var myMarker = null;
+var geocoder = null;
+var rating = $("#rating_pass").val();
+var infowindow = new google.maps.InfoWindow({size: new google.maps.Size(150,50)});
+var startLoc = null;
+var circle = null;
+var u = 0;
+var m = 0;
+var f = 0;
+var avg = 0;
+
+function callback(results, status, pagination) {
+  if (status == google.maps.places.PlacesServiceStatus.OK) {
+ 
+ /*document.getElementById('side_bar').innerHTML ="<h5>found "+results.length+" places</h5>";*/
+  for (var i = 0; i < results.length; i++) {
+    var place = results[i];
+    places.push(place);
+    createMarker(results[i]);	
+  }   
+  console.log(results.length);
+ /*  if (pagination.hasNextPage) {
+      var moreButton = document.getElementById('more');
+
+      moreButton.disabled = false;
+
+      moreButton.addEventListener('click', function() {
+	  var select = document.getElementById("place");
+		var length = select.options.length;
+		for (i = 0; i < length; i++) {
+		select.options[i] = null;
+		}
+        moreButton.disabled = true;
+        pagination.nextPage();
+      });
+    } */
+  }
+}
+
+function initialize() {
+	geocoder = new google.maps.Geocoder();
+  
+  navigator.geolocation.getCurrentPosition(function(position){
+	myPosition = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+	//document.getElementById("userLocation").value = myPosition;
+	startLoc = myPosition;
+	map = new google.maps.Map(document.getElementById('map_canvas'), {
+    center: myPosition,
+    zoom: 15
+	});	
+	service = new google.maps.places.PlacesService(map);
+	
+	google.maps.event.addListener(map, "click", function(evt) {
+		infowindow.close();
+		myMarker.info.close();
+  });
+   
+	 map.addListener('idle', performSearch);
+  
+  myLocation();
+   document.getElementById("test").innerHTML = myPosition;
+  }); 
+      }
+      google.maps.event.addDomListener(window, 'load', initialize);
+	  
+function myLocation(){
+	initialService = new google.maps.places.PlacesService(map);  
+
+  	myMarker = new google.maps.Marker({
+position: myPosition, map:map, icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
+  title: 'you'
+});
+myMarker.info = new google.maps.InfoWindow({
+  content: 'you'
+});
+ google.maps.event.addListener(myMarker, 'click', function() {
+  myMarker.info.open(map, myMarker);
+  infowindow.close();});
+  
+ /*  //clears dropdown list
+  var select = document.getElementById("place");
+	for (i=select.options.length-1;i>=0;i--) {
+	select.remove(i);
+} */
+  
+	/* pList = document.getElementById("place");
+	option = document.createElement("option");
+	option.text = "Results";
+	pList.add(option); */
+  
+  /* var request = {
+    location: myPosition,
+	radius: 2000,
+    types: ['bar']
+  };
+
+  initialService.nearbySearch(request, callback) */;
+}
+
+function performSearch() {
+  var request = {
+    bounds: map.getBounds(),
+    keyword: 'bar',
+	types: ['bar']
+  };
+  
+  gmarkers.length = 0;
+  places.length = 0;
+  
+  service.nearbySearch(request, callback);
+}
+
+function createMarker(place){
+	u = 0;
+	var placesList = document.getElementById('places');
+    var placeLoc=place.geometry.location;
+    if (place.icon) {
+      var image = new google.maps.MarkerImage(
+                place.icon, new google.maps.Size(71, 71),
+                new google.maps.Point(0, 0), new google.maps.Point(17, 34),
+                new google.maps.Size(25, 25));
+     } else var image = null;
+
+    var marker=new google.maps.Marker({
+        map:map,
+        icon: {
+      url: 'img/bar2.png'
+    },
+		title: place.name,
+		anchorPoint: new google.maps.Point(-5, -30),
+        position:place.geometry.location
+    });
+	
+	var request =  {
+          reference: place.reference
+    };
+     
+	
+	 
+    google.maps.event.addListener(marker,'click',function(){
+        service.getDetails(request, function(place, status) {
+			//console.log(place);
+			
+		/* getInfowindowCon(function(userCount){
+			u = userCount;
+		}); */
+			//document.getElementById("userLocation").value = myPosition;
+			//document.getElementById("placeId").value = place.place_id;
+			placeId = place.place_id;			
+          if (status == google.maps.places.PlacesServiceStatus.OK) {			
+            var contentStr = "<a href="+ place.url + ">" +  place.name + "</a>" + 
+			", " + u + " users here <br>" + m + " males, " + f +
+			" females <br> The average funLevel is " + avg + 
+			"<br><br> <input type='text' id='rating_pass' name='rating_pass' size='2' maxlength='2'></input> Please rate 1-5! &nbsp <button id='btRate' name='btRate' class='btn btn-xs' >Rate</button>";
+            infowindow.setContent(contentStr);
+			myMarker.info.close();
+            infowindow.open(map,marker);	
+			document.getElementById("test2").innerHTML = place.place_id;
+			document.getElementById("rating_pass").innerHTML = myPosition;
+			
+/* place a cirlce around a point	 */
+	/* var cityCircle = new google.maps.Circle({
+            strokeColor: '#FF0000',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: '#FF0000',
+            fillOpacity: 0.35,
+            map: map,
+            center: place.geometry.location,
+            radius: 50
+          }); */
+			barLocation = pointInCircle(myPosition, place.geometry.location);
+			document.getElementById("test").innerHTML = pointInCircle(myPosition, place.geometry.location);
+          } 
+        });
+    }); 
+	
+    gmarkers.push(marker);	
+/*
+    if (gmarkers.length==1)
+    {
+      map.setCenter(marker.getPosition());
+      map.setZoom(19);
+      google.maps.event.trigger(marker, "click");
+    }
+*/
+    /*var side_bar_html = "<a href='javascript:google.maps.event.trigger(gmarkers["+parseInt(gmarkers.length-1)+"],\"click\");'>"+place.name+"</a><br>";
+    document.getElementById('side_bar').innerHTML += side_bar_html;*/
+	
+	/*service.getDetails(place, function(place, status) {
+          if (status == google.maps.places.PlacesServiceStatus.OK) {
+			 //console.log(place);
+			 
+			placesList.innerHTML += '<li>' + place.name + '</li>';
+			 for (var i = 0; i < pList.length; i++) {
+			if (place.name == pList.options[i].text){
+				
+			}else {
+				option = document.createElement("option");
+				option.text = place.name; 
+				pList.add(option);
+				break;}
+			
+          } 
+        });	} */
+}
+
+$(document).on("pageload",function getInfowindowCon(){
+	/* $.ajax({
+		type: 'get',
+		url: 'getInfo.php',
+		data: {placeId: placeId},
+		success: function(data) {
+		callback(data);
+        console.log(data);
+		
+    }
+	}); */
+	
+	var jqxhr = $.get( "getInfo.php", {placeId: placeId})
+  .done(function(data) {
+    alert( "second success " + data );
+	u = data;
+  })
+  .fail(function() {
+    alert( "error" );
+  })
+  .always(function() {
+    alert( "finished" );
+  });
+  jqxhr.always(function() {
+  alert( "second finished" );
+});
+});
+
+/* function getEventTarget(e) {
+        e = e || window.event;
+        return e.target || e.srcElement; 
+    }
+	
+	 var ul = document.getElementById('places');
+    ul.onclick = function(event) {
+        var target = getEventTarget(event);
+        //alert(target.innerHTML);
+		for (i = 0; i < gmarkers.length; i++){
+	if (target.innerHTML == gmarkers[i].title){
+		map.setCenter(new google.maps.LatLng(gmarkers[i].position.lat(), gmarkers[i].position.lng()));
+		google.maps.event.trigger(gmarkers[i], 'click')		
+	}	
+	}	
+    };
+	//enter key triggers address search button
+	$("#address").keyup(function(event){
+    if(event.keyCode == 13){
+        $("#btnAddress").click();
+    }
+}); */
+
+function gotoBar(a){
+for (i = 0; i < gmarkers.length; i++){
+	if (a.value == gmarkers[i].title){
+		console.log(a.value );
+		map.setCenter(new google.maps.LatLng(gmarkers[i].position.lat(), gmarkers[i].position.lng()));
+		google.maps.event.trigger(gmarkers[i], 'click')		
+	}	
+	}		
+}
+
+function codeAddress() {
+	for(i=0; i<gmarkers.length; i++){
+        gmarkers[i].setMap(null);
+    }
+	
+	myMarker.setMap(null);
+	var address = document.getElementById('address').value;
+		
+
+	geocoder.geocode( { 'address': address}, function(results, status) {
+    if (status == google.maps.GeocoderStatus.OK) {
+      map.setCenter(results[0].geometry.location);
+	  myPosition = results[0].geometry.location;
+      myLocation();
+    } else {
+      alert('Geocode was not successful for the following reason: ' + status);
+    }
+  });
+  dialog.dialog( "close" );		
+}
+
+function pointInCircle(point, center){
+    return (google.maps.geometry.spherical.computeDistanceBetween(point, center) <= 50)
+}
+
+var dialog, dialog2, form, form2,  address = $("#address");
+
+	//search 
+	$(function() {		
+		function add() {
+			$("#btnAddress").trigger("click");
+			 dialog.dialog( "close" );
+	}
+		
+		dialog = $( "#form-address" ).dialog({
+      autoOpen: false,
+      height: 200,
+      width: 350,
+      modal: true,
+      buttons: {
+        "Search": add,
+        Cancel: function() {
+          dialog.dialog( "close" );
+        }
+      },
+      close: function() {
+        form[ 0 ].reset();
+      }
+    });
+	
+	form = dialog.find( "form" ).on( "submit", function( event ) {
+      event.preventDefault();
+    });
+	
+	$( "#searchPlace" ).button().on( "click", function() {
+      dialog.dialog( "open" );
+    });	
+		});
+		
+	//rate
+	$(function() {		
+		$(document).on("click", "#btRate", function(){
+			/* if(barLocation){
+				if($("#rating_pass").val()<6){ */
+    $.ajax({
+        type: 'POST',
+        url: 'rate.php',
+        data: { rating: $("#rating_pass").val(), userLocation: myPosition.lat() + "," + myPosition.lng(), placeId: placeId},
+        success: function(response) {
+			console.log(response);
+         alert(response);
+        }
+		});
+		/* }else{alert("Rating is over 5");}
+		}else{alert("You are not at this location");}*/		
+		});	 
+	});
+</script>
+	
+<?php
+include ('footer.php');
+?>
