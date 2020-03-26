@@ -1,0 +1,2 @@
+<?
+echo('catch this -> ' ;. $thisdoesnotexist);
